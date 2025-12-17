@@ -1,0 +1,4 @@
+project_id = "eneejalxxtrsvukhrwzx"
+
+[functions.analyze-expenses]
+verify_jwt = false
