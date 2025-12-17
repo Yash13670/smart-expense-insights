@@ -1,43 +1,54 @@
 export const sampleCSV = `Date,Description,Category,Amount
-2024-12-01,Starbucks Coffee,Food & Dining,6.50
-2024-12-01,Uber Ride,Transportation,24.00
-2024-12-02,Amazon Purchase,Shopping,89.99
-2024-12-02,Netflix Subscription,Entertainment,15.99
-2024-12-03,Whole Foods Market,Groceries,156.34
-2024-12-03,Shell Gas Station,Transportation,52.00
-2024-12-04,Chipotle Lunch,Food & Dining,14.25
-2024-12-04,Spotify Premium,Entertainment,10.99
-2024-12-05,Target Shopping,Shopping,67.43
-2024-12-05,Electric Bill,Utilities,124.50
-2024-12-06,DoorDash Delivery,Food & Dining,32.50
-2024-12-06,Gym Membership,Health & Fitness,49.99
-2024-12-07,CVS Pharmacy,Health & Fitness,28.75
-2024-12-07,Apple Music,Entertainment,10.99
-2024-12-08,Trader Joe's,Groceries,98.67
-2024-12-08,Lyft Ride,Transportation,18.50
-2024-12-09,McDonald's,Food & Dining,12.45
-2024-12-09,Amazon Prime,Shopping,14.99
-2024-12-10,Costco Shopping,Groceries,245.78
-2024-12-10,Internet Bill,Utilities,79.99
-2024-12-11,Grubhub Order,Food & Dining,28.90
-2024-12-11,Nike Store,Shopping,129.99
-2024-12-12,Safeway Grocery,Groceries,87.23
-2024-12-12,Uber Eats,Food & Dining,35.60
-2024-12-13,Movie Tickets,Entertainment,32.00
-2024-12-13,Gas Station,Transportation,48.00
-2024-12-14,Sephora,Shopping,78.50
-2024-12-14,Dinner at Olive Garden,Food & Dining,65.00
-2024-12-15,Phone Bill,Utilities,85.00
-2024-12-15,Walgreens,Health & Fitness,22.45
-2024-12-16,Starbucks,Food & Dining,8.25
-2024-12-16,Best Buy,Shopping,299.99
-2024-12-17,Uber,Transportation,16.00
-2024-12-17,Lunch Meeting,Food & Dining,45.00`;
+2024-12-01,Cafe Coffee Day,Food & Dining,350
+2024-12-01,Ola Ride,Transportation,245
+2024-12-02,Amazon India,Shopping,2499
+2024-12-02,Netflix Subscription,Entertainment,649
+2024-12-03,Big Bazaar,Groceries,3850
+2024-12-03,Indian Oil Petrol,Transportation,1500
+2024-12-04,Zomato Lunch,Food & Dining,425
+2024-12-04,Spotify Premium,Entertainment,119
+2024-12-05,Myntra Shopping,Shopping,1899
+2024-12-05,Electricity Bill,Utilities,2450
+2024-12-06,Swiggy Delivery,Food & Dining,580
+2024-12-06,Cult Fit Membership,Health & Fitness,1499
+2024-12-07,Apollo Pharmacy,Health & Fitness,875
+2024-12-07,JioSaavn Pro,Entertainment,99
+2024-12-08,DMart Grocery,Groceries,2650
+2024-12-08,Uber Ride,Transportation,320
+2024-12-09,McDonald's,Food & Dining,450
+2024-12-09,Amazon Prime,Shopping,1499
+2024-12-10,Reliance Fresh,Groceries,4200
+2024-12-10,Internet Bill,Utilities,999
+2024-12-11,Dominos Pizza,Food & Dining,750
+2024-12-11,Ajio Shopping,Shopping,2199
+2024-12-12,More Supermarket,Groceries,1850
+2024-12-12,EatSure Order,Food & Dining,620
+2024-12-13,PVR Cinemas,Entertainment,890
+2024-12-13,BPCL Petrol,Transportation,1800
+2024-12-14,Nykaa Beauty,Shopping,1650
+2024-12-14,Barbeque Nation,Food & Dining,2400
+2024-12-15,Mobile Recharge,Utilities,599
+2024-12-15,Medplus Pharmacy,Health & Fitness,450
+2024-12-16,Starbucks Coffee,Food & Dining,550
+2024-12-16,Croma Electronics,Shopping,8999
+2024-12-17,Rapido Bike,Transportation,85
+2024-12-17,Team Lunch,Food & Dining,1200`;
 
 export const suggestedQuestions = [
-  "What's my total spending this month?",
-  "Show me spending by category",
-  "What are my top 3 spending categories?",
-  "How much did I spend in the last 7 days?",
-  "Give me insights on my spending habits",
+  "💰 Total spending this month",
+  "📊 Category breakdown",
+  "🏆 Top 3 categories",
+  "📅 Last 7 days spending",
+  "💡 Spending insights",
 ];
+
+export const categoryColors: Record<string, string> = {
+  "Food & Dining": "#10b981",
+  "Transportation": "#3b82f6",
+  "Shopping": "#f59e0b",
+  "Entertainment": "#ec4899",
+  "Groceries": "#8b5cf6",
+  "Utilities": "#06b6d4",
+  "Health & Fitness": "#ef4444",
+  "Other": "#6b7280",
+};
