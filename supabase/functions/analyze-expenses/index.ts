@@ -18,6 +18,15 @@ interface AnalysisResult {
   summary: string;
 }
 
+// Format currency in Indian Rupees
+function formatINR(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 // Parse CSV data into transactions
 function parseCSV(csvData: string): Transaction[] {
   const lines = csvData.trim().split('\n');
@@ -90,11 +99,11 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     return {
       type: 'total',
       data: {
-        totalSpending: totalSpending.toFixed(2),
+        totalSpending: totalSpending,
         transactionCount: transactions.length,
-        avgTransaction: (totalSpending / transactions.length).toFixed(2),
+        avgTransaction: Math.round(totalSpending / transactions.length),
       },
-      summary: `Total spending: $${totalSpending.toFixed(2)} across ${transactions.length} transactions. Average transaction: $${(totalSpending / transactions.length).toFixed(2)}.`
+      summary: `Total spending: ${formatINR(totalSpending)} across ${transactions.length} transactions. Average transaction: ${formatINR(totalSpending / transactions.length)}.`
     };
   }
   
@@ -102,11 +111,11 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     return {
       type: 'monthly',
       data: {
-        monthlyTotal: monthlyTotal.toFixed(2),
+        monthlyTotal: monthlyTotal,
         transactionCount: monthlyTransactions.length,
-        dailyAvg: (monthlyTotal / 30).toFixed(2),
+        dailyAvg: Math.round(monthlyTotal / 30),
       },
-      summary: `Monthly spending (last 30 days): $${monthlyTotal.toFixed(2)} across ${monthlyTransactions.length} transactions. Daily average: $${(monthlyTotal / 30).toFixed(2)}.`
+      summary: `Monthly spending (last 30 days): ${formatINR(monthlyTotal)} across ${monthlyTransactions.length} transactions. Daily average: ${formatINR(monthlyTotal / 30)}.`
     };
   }
   
@@ -114,25 +123,31 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     return {
       type: 'weekly',
       data: {
-        weeklyTotal: last7DaysTotal.toFixed(2),
+        weeklyTotal: last7DaysTotal,
         transactionCount: last7Days.length,
-        dailyAvg: (last7DaysTotal / 7).toFixed(2),
+        dailyAvg: Math.round(last7DaysTotal / 7),
+        transactions: last7Days.slice(0, 10).map(t => ({
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          category: t.category
+        })),
       },
-      summary: `Last 7 days spending: $${last7DaysTotal.toFixed(2)} across ${last7Days.length} transactions. Daily average: $${(last7DaysTotal / 7).toFixed(2)}.`
+      summary: `Last 7 days spending: ${formatINR(last7DaysTotal)} across ${last7Days.length} transactions. Daily average: ${formatINR(last7DaysTotal / 7)}.`
     };
   }
   
   if (lowerIntent.includes('category') || lowerIntent.includes('breakdown') || lowerIntent.includes('categories')) {
     const categoryData = sortedCategories.map(([cat, amount]) => ({
       category: cat,
-      amount: amount.toFixed(2),
-      percentage: ((amount / totalSpending) * 100).toFixed(1),
+      amount: amount,
+      percentage: Math.round((amount / totalSpending) * 100),
     }));
     
     return {
       type: 'category',
-      data: { categories: categoryData, totalSpending: totalSpending.toFixed(2) },
-      summary: `Category breakdown: ${sortedCategories.slice(0, 5).map(([cat, amt]) => `${cat}: $${amt.toFixed(2)} (${((amt/totalSpending)*100).toFixed(1)}%)`).join(', ')}.`
+      data: { categories: categoryData, totalSpending: totalSpending },
+      summary: `Category breakdown: ${sortedCategories.slice(0, 5).map(([cat, amt]) => `${cat}: ${formatINR(amt)} (${Math.round((amt/totalSpending)*100)}%)`).join(', ')}.`
     };
   }
   
@@ -143,30 +158,31 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
       data: {
         topCategories: top3.map(([cat, amount]) => ({
           category: cat,
-          amount: amount.toFixed(2),
-          percentage: ((amount / totalSpending) * 100).toFixed(1),
+          amount: amount,
+          percentage: Math.round((amount / totalSpending) * 100),
         })),
-        totalSpending: totalSpending.toFixed(2),
+        totalSpending: totalSpending,
       },
-      summary: `Top 3 spending categories: ${top3.map(([cat, amt], i) => `${i+1}. ${cat}: $${amt.toFixed(2)}`).join(', ')}.`
+      summary: `Top 3 spending categories: ${top3.map(([cat, amt], i) => `${i+1}. ${cat}: ${formatINR(amt)}`).join(', ')}.`
     };
   }
   
   if (lowerIntent.includes('insight') || lowerIntent.includes('overspend') || lowerIntent.includes('advice') || lowerIntent.includes('suggest')) {
     const topCategory = sortedCategories[0];
-    const topCategoryPercentage = topCategory ? (topCategory[1] / totalSpending) * 100 : 0;
-    const dailyAvg = monthlyTotal / 30;
+    const topCategoryPercentage = topCategory ? Math.round((topCategory[1] / totalSpending) * 100) : 0;
+    const dailyAvg = Math.round(monthlyTotal / 30);
     
     return {
       type: 'insight',
       data: {
-        topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1].toFixed(2), percentage: topCategoryPercentage.toFixed(1) } : null,
-        monthlyTotal: monthlyTotal.toFixed(2),
-        dailyAvg: dailyAvg.toFixed(2),
-        weeklyTotal: last7DaysTotal.toFixed(2),
-        categories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt.toFixed(2) })),
+        topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1], percentage: topCategoryPercentage } : null,
+        monthlyTotal: monthlyTotal,
+        dailyAvg: dailyAvg,
+        weeklyTotal: last7DaysTotal,
+        categories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt, percentage: Math.round((amt/totalSpending)*100) })),
+        transactionCount: transactions.length,
       },
-      summary: `Spending insight: Your highest category is ${topCategory?.[0] || 'N/A'} at $${topCategory?.[1]?.toFixed(2) || 0} (${topCategoryPercentage.toFixed(1)}% of total). Monthly: $${monthlyTotal.toFixed(2)}, Weekly: $${last7DaysTotal.toFixed(2)}, Daily avg: $${dailyAvg.toFixed(2)}.`
+      summary: `Spending insight: Your highest category is ${topCategory?.[0] || 'N/A'} at ${formatINR(topCategory?.[1] || 0)} (${topCategoryPercentage}% of total). Monthly: ${formatINR(monthlyTotal)}, Weekly: ${formatINR(last7DaysTotal)}, Daily avg: ${formatINR(dailyAvg)}.`
     };
   }
   
@@ -174,13 +190,13 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
   return {
     type: 'overview',
     data: {
-      totalSpending: totalSpending.toFixed(2),
-      monthlyTotal: monthlyTotal.toFixed(2),
-      weeklyTotal: last7DaysTotal.toFixed(2),
+      totalSpending: totalSpending,
+      monthlyTotal: monthlyTotal,
+      weeklyTotal: last7DaysTotal,
       transactionCount: transactions.length,
-      topCategories: sortedCategories.slice(0, 3).map(([cat, amt]) => ({ category: cat, amount: amt.toFixed(2) })),
+      topCategories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt, percentage: Math.round((amt/totalSpending)*100) })),
     },
-    summary: `Overview: Total spending $${totalSpending.toFixed(2)}, Monthly $${monthlyTotal.toFixed(2)}, Weekly $${last7DaysTotal.toFixed(2)}. Top categories: ${sortedCategories.slice(0, 3).map(([cat]) => cat).join(', ')}.`
+    summary: `Overview: Total spending ${formatINR(totalSpending)}, Monthly ${formatINR(monthlyTotal)}, Weekly ${formatINR(last7DaysTotal)}. Top categories: ${sortedCategories.slice(0, 3).map(([cat]) => cat).join(', ')}.`
   };
 }
 
@@ -220,14 +236,16 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a personal finance AI assistant. Your job is to explain expense data clearly and provide actionable insights.
+    const systemPrompt = `You are a personal finance AI assistant for Indian users. Your job is to explain expense data clearly and provide actionable insights.
 
 RULES:
 - Use ONLY the provided transaction summary data - never invent numbers
+- Always use Indian Rupee (₹) symbol for all currency values
 - Keep responses friendly, clear, and concise (2-4 sentences)
 - If the data shows high spending in a category, provide a helpful observation
-- Format currency with $ and two decimal places
-- Do not make assumptions about data you don't have`;
+- Use Indian context (mention UPI, common Indian spending patterns if relevant)
+- Do not make assumptions about data you don't have
+- Be encouraging and helpful`;
 
     const userPrompt = `User question: "${question}"
 
@@ -237,7 +255,7 @@ ${analysis.summary}
 Detailed data:
 ${JSON.stringify(analysis.data, null, 2)}
 
-Please provide a helpful, friendly response based on this data.`;
+Please provide a helpful, friendly response based on this data. Use ₹ for currency.`;
 
     console.log('Calling Lovable AI...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
