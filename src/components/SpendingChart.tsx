@@ -219,17 +219,25 @@ export function SpendingChart({ analysis }: SpendingChartProps) {
             <p className="text-xl font-bold text-foreground">{data.transactionCount}</p>
           </div>
         </div>
-        <div className="flex gap-1">
+        
+        {/* Category breakdown with visible labels */}
+        <div className="space-y-2">
           {categories.map((cat, idx) => (
-            <div 
-              key={idx}
-              className="flex-1 h-8 rounded-lg transition-transform hover:scale-105 cursor-pointer"
-              style={{ 
-                backgroundColor: categoryColors[cat.category] || "#6b7280",
-                opacity: 1 - (idx * 0.15)
-              }}
-              title={`${cat.category}: ${formatINR(cat.amount)}`}
-            />
+            <div key={idx} className="flex items-center gap-3">
+              <div 
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: categoryColors[cat.category] || "#6b7280" }}
+              />
+              <span className="text-sm text-foreground flex-1 min-w-0 truncate font-medium">
+                {cat.category}
+              </span>
+              <span className="text-sm font-bold text-primary flex-shrink-0">
+                {formatINR(cat.amount)}
+              </span>
+              <span className="text-xs text-muted-foreground flex-shrink-0 w-12 text-right">
+                {cat.percentage}%
+              </span>
+            </div>
           ))}
         </div>
       </div>
