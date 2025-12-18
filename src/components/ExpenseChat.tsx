@@ -3,11 +3,11 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QuickActions } from "./QuickActions";
 import { FileUpload } from "./FileUpload";
+import { TransactionTable } from "./TransactionTable";
 import { Button } from "@/components/ui/button";
 import { sampleCSV } from "@/data/sampleTransactions";
 import { Sparkles, Database, IndianRupee, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -23,6 +23,7 @@ export function ExpenseChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [csvData, setCsvData] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showTransactions, setShowTransactions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -145,6 +146,15 @@ export function ExpenseChat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        {/* Transaction Table - shown when data is loaded */}
+        {csvData && (
+          <TransactionTable 
+            csvData={csvData} 
+            isOpen={showTransactions} 
+            onToggle={() => setShowTransactions(!showTransactions)} 
+          />
+        )}
+
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="relative mb-6">
