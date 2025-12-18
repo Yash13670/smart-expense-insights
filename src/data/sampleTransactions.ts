@@ -37,9 +37,9 @@ export const sampleCSV = `Date,Description,Category,Amount
 export const suggestedQuestions = [
   "💰 Total spending this month",
   "📊 Category breakdown",
-  "🏆 Top 3 categories",
-  "📅 Last 7 days spending",
-  "💡 Spending insights",
+  "📈 My spending patterns",
+  "🚫 Find unnecessary expenses",
+  "💡 How can I save money?",
 ];
 
 export const categoryColors: Record<string, string> = {

@@ -239,6 +239,231 @@ function parseCSV(csvData: string): Transaction[] {
   return transactions;
 }
 
+// Detect unnecessary/wasteful expenses
+function detectUnnecessaryExpenses(transactions: Transaction[]): {
+  impulseSpending: { category: string; amount: number; frequency: number }[];
+  duplicateSubscriptions: string[];
+  highFrequencySmall: { description: string; totalAmount: number; count: number }[];
+  discretionaryTotal: number;
+  savingsPotential: number;
+} {
+  // Discretionary categories that could be reduced
+  const discretionaryCategories = ['Food & Dining', 'Entertainment', 'Shopping'];
+  const discretionaryTotal = transactions
+    .filter(t => discretionaryCategories.includes(t.category))
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Find high-frequency small transactions (likely impulse purchases)
+  const descriptionGroups: Record<string, { total: number; count: number }> = {};
+  transactions.forEach(t => {
+    const key = t.description.toLowerCase().split(' ').slice(0, 2).join(' ');
+    if (!descriptionGroups[key]) {
+      descriptionGroups[key] = { total: 0, count: 0 };
+    }
+    descriptionGroups[key].total += t.amount;
+    descriptionGroups[key].count += 1;
+  });
+
+  const highFrequencySmall = Object.entries(descriptionGroups)
+    .filter(([_, data]) => data.count >= 3 && data.total / data.count < 1000)
+    .map(([desc, data]) => ({
+      description: desc,
+      totalAmount: data.total,
+      count: data.count,
+    }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 5);
+
+  // Detect multiple subscriptions (potential duplicates)
+  const subscriptionKeywords = ['subscription', 'premium', 'pro', 'netflix', 'spotify', 'prime', 'hotstar', 'jio', 'membership'];
+  const subscriptions = transactions.filter(t => 
+    subscriptionKeywords.some(kw => t.description.toLowerCase().includes(kw))
+  );
+  const duplicateSubscriptions = subscriptions.length > 3 
+    ? subscriptions.map(s => s.description).slice(0, 5)
+    : [];
+
+  // Impulse spending by category
+  const categoryFrequency: Record<string, { amount: number; frequency: number }> = {};
+  transactions.forEach(t => {
+    if (!categoryFrequency[t.category]) {
+      categoryFrequency[t.category] = { amount: 0, frequency: 0 };
+    }
+    categoryFrequency[t.category].amount += t.amount;
+    categoryFrequency[t.category].frequency += 1;
+  });
+
+  const impulseSpending = Object.entries(categoryFrequency)
+    .filter(([cat, data]) => 
+      discretionaryCategories.includes(cat) && 
+      data.frequency >= 5 && 
+      data.amount / data.frequency < 1500
+    )
+    .map(([cat, data]) => ({
+      category: cat,
+      amount: data.amount,
+      frequency: data.frequency,
+    }));
+
+  // Calculate potential savings (30% of discretionary spending as a target)
+  const savingsPotential = Math.round(discretionaryTotal * 0.3);
+
+  return {
+    impulseSpending,
+    duplicateSubscriptions,
+    highFrequencySmall,
+    discretionaryTotal,
+    savingsPotential,
+  };
+}
+
+// Analyze spending patterns
+function analyzeSpendingPatterns(transactions: Transaction[]): {
+  weekdayVsWeekend: { weekday: number; weekend: number };
+  dayOfWeekSpending: Record<string, number>;
+  peakSpendingDay: string;
+  recurringExpenses: { description: string; amount: number; frequency: string }[];
+  averageTransactionSize: number;
+  spendingTrend: 'increasing' | 'decreasing' | 'stable';
+} {
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayOfWeekSpending: Record<string, number> = {};
+  dayNames.forEach(d => dayOfWeekSpending[d] = 0);
+
+  let weekdayTotal = 0;
+  let weekendTotal = 0;
+
+  transactions.forEach(t => {
+    const date = new Date(t.date);
+    if (!isNaN(date.getTime())) {
+      const dayName = dayNames[date.getDay()];
+      dayOfWeekSpending[dayName] += t.amount;
+      
+      if (date.getDay() === 0 || date.getDay() === 6) {
+        weekendTotal += t.amount;
+      } else {
+        weekdayTotal += t.amount;
+      }
+    }
+  });
+
+  // Find peak spending day
+  const peakSpendingDay = Object.entries(dayOfWeekSpending)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+
+  // Detect recurring expenses (same amount appearing multiple times)
+  const amountGroups: Record<string, { desc: string; count: number }> = {};
+  transactions.forEach(t => {
+    const key = `${t.amount}-${t.category}`;
+    if (!amountGroups[key]) {
+      amountGroups[key] = { desc: t.description, count: 0 };
+    }
+    amountGroups[key].count += 1;
+  });
+
+  const recurringExpenses = Object.entries(amountGroups)
+    .filter(([_, data]) => data.count >= 2)
+    .map(([key, data]) => ({
+      description: data.desc,
+      amount: parseFloat(key.split('-')[0]),
+      frequency: data.count >= 4 ? 'Weekly' : data.count >= 2 ? 'Monthly' : 'One-time',
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  // Calculate spending trend (compare first half vs second half)
+  const sortedByDate = [...transactions].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  const midpoint = Math.floor(sortedByDate.length / 2);
+  const firstHalf = sortedByDate.slice(0, midpoint).reduce((sum, t) => sum + t.amount, 0);
+  const secondHalf = sortedByDate.slice(midpoint).reduce((sum, t) => sum + t.amount, 0);
+  
+  let spendingTrend: 'increasing' | 'decreasing' | 'stable' = 'stable';
+  if (secondHalf > firstHalf * 1.15) spendingTrend = 'increasing';
+  else if (secondHalf < firstHalf * 0.85) spendingTrend = 'decreasing';
+
+  const averageTransactionSize = transactions.length > 0 
+    ? Math.round(transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length)
+    : 0;
+
+  return {
+    weekdayVsWeekend: { weekday: weekdayTotal, weekend: weekendTotal },
+    dayOfWeekSpending,
+    peakSpendingDay,
+    recurringExpenses,
+    averageTransactionSize,
+    spendingTrend,
+  };
+}
+
+// Generate smart savings suggestions
+function generateSavingsSuggestions(
+  transactions: Transaction[],
+  patterns: ReturnType<typeof analyzeSpendingPatterns>,
+  unnecessaryExpenses: ReturnType<typeof detectUnnecessaryExpenses>
+): string[] {
+  const suggestions: string[] = [];
+  const totalSpending = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+  // Food & Dining suggestions
+  const foodSpending = transactions
+    .filter(t => t.category === 'Food & Dining')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const foodPercentage = (foodSpending / totalSpending) * 100;
+  
+  if (foodPercentage > 25) {
+    suggestions.push(`🍽️ Food & Dining is ${Math.round(foodPercentage)}% of spending. Consider meal prepping to save ${formatINR(Math.round(foodSpending * 0.3))}/month.`);
+  }
+
+  // High frequency small purchases
+  if (unnecessaryExpenses.highFrequencySmall.length > 0) {
+    const topItem = unnecessaryExpenses.highFrequencySmall[0];
+    suggestions.push(`☕ You made ${topItem.count} purchases at "${topItem.description}" totaling ${formatINR(topItem.totalAmount)}. Reducing frequency could save significantly.`);
+  }
+
+  // Weekend spending
+  if (patterns.weekdayVsWeekend.weekend > patterns.weekdayVsWeekend.weekday * 0.6) {
+    suggestions.push(`📅 Weekend spending (${formatINR(patterns.weekdayVsWeekend.weekend)}) is high. Plan free activities to reduce weekend expenses.`);
+  }
+
+  // Multiple subscriptions
+  if (unnecessaryExpenses.duplicateSubscriptions.length > 0) {
+    suggestions.push(`📺 You have ${unnecessaryExpenses.duplicateSubscriptions.length} active subscriptions. Consider sharing or canceling unused ones to save ${formatINR(500)}-${formatINR(1500)}/month.`);
+  }
+
+  // Shopping impulse
+  const shoppingSpending = transactions
+    .filter(t => t.category === 'Shopping')
+    .reduce((sum, t) => sum + t.amount, 0);
+  if (shoppingSpending / totalSpending > 0.2) {
+    suggestions.push(`🛍️ Shopping is ${Math.round((shoppingSpending/totalSpending)*100)}% of spending. Try the 24-hour rule before non-essential purchases.`);
+  }
+
+  // Transportation optimization
+  const transportSpending = transactions
+    .filter(t => t.category === 'Transportation')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const rideShares = transactions.filter(t => 
+    t.description.toLowerCase().includes('uber') || 
+    t.description.toLowerCase().includes('ola') ||
+    t.description.toLowerCase().includes('rapido')
+  ).length;
+  if (rideShares > 10) {
+    suggestions.push(`🚗 You took ${rideShares} ride-shares. Consider metro/bus for some trips to save up to ${formatINR(Math.round(transportSpending * 0.4))}.`);
+  }
+
+  // Spending trend warning
+  if (patterns.spendingTrend === 'increasing') {
+    suggestions.push(`📈 Your spending is trending upward. Set a weekly budget limit to stay on track.`);
+  }
+
+  // Savings goal
+  suggestions.push(`💰 Target savings: ${formatINR(unnecessaryExpenses.savingsPotential)}/month by reducing discretionary spending by 30%.`);
+
+  return suggestions.slice(0, 6);
+}
+
 // Analyze expenses based on intent
 function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisResult {
   const lowerIntent = intent.toLowerCase();
@@ -257,7 +482,6 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     .sort((a, b) => b[1] - a[1]);
   
   // Date range analysis
-  const dates = transactions.map(t => new Date(t.date)).filter(d => !isNaN(d.getTime()));
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -275,8 +499,61 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     return d >= thirtyDaysAgo && d <= now;
   });
   const monthlyTotal = monthlyTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+  // Get patterns and unnecessary expenses for enhanced analysis
+  const patterns = analyzeSpendingPatterns(transactions);
+  const unnecessaryExpenses = detectUnnecessaryExpenses(transactions);
+  const savingsSuggestions = generateSavingsSuggestions(transactions, patterns, unnecessaryExpenses);
   
-  // Determine response based on intent
+  // Handle spending patterns query
+  if (lowerIntent.includes('pattern') || lowerIntent.includes('habit') || lowerIntent.includes('trend') || lowerIntent.includes('when do i spend')) {
+    return {
+      type: 'patterns',
+      data: {
+        weekdayVsWeekend: patterns.weekdayVsWeekend,
+        dayOfWeekSpending: patterns.dayOfWeekSpending,
+        peakSpendingDay: patterns.peakSpendingDay,
+        recurringExpenses: patterns.recurringExpenses,
+        averageTransactionSize: patterns.averageTransactionSize,
+        spendingTrend: patterns.spendingTrend,
+        totalSpending,
+      },
+      summary: `Spending patterns: Peak day is ${patterns.peakSpendingDay}. Weekday: ${formatINR(patterns.weekdayVsWeekend.weekday)}, Weekend: ${formatINR(patterns.weekdayVsWeekend.weekend)}. Trend: ${patterns.spendingTrend}. Avg transaction: ${formatINR(patterns.averageTransactionSize)}.`
+    };
+  }
+
+  // Handle unnecessary expenses / waste detection
+  if (lowerIntent.includes('unnecessary') || lowerIntent.includes('waste') || lowerIntent.includes('cut') || lowerIntent.includes('reduce') || lowerIntent.includes('impulse')) {
+    return {
+      type: 'unnecessary',
+      data: {
+        impulseSpending: unnecessaryExpenses.impulseSpending,
+        duplicateSubscriptions: unnecessaryExpenses.duplicateSubscriptions,
+        highFrequencySmall: unnecessaryExpenses.highFrequencySmall,
+        discretionaryTotal: unnecessaryExpenses.discretionaryTotal,
+        savingsPotential: unnecessaryExpenses.savingsPotential,
+        totalSpending,
+      },
+      summary: `Unnecessary expense analysis: Discretionary spending is ${formatINR(unnecessaryExpenses.discretionaryTotal)}. Potential savings: ${formatINR(unnecessaryExpenses.savingsPotential)}/month. Found ${unnecessaryExpenses.highFrequencySmall.length} high-frequency small purchases.`
+    };
+  }
+
+  // Handle savings suggestions / advice
+  if (lowerIntent.includes('save') || lowerIntent.includes('suggest') || lowerIntent.includes('advice') || lowerIntent.includes('tip') || lowerIntent.includes('help me') || lowerIntent.includes('how can i')) {
+    return {
+      type: 'savings',
+      data: {
+        suggestions: savingsSuggestions,
+        savingsPotential: unnecessaryExpenses.savingsPotential,
+        discretionaryTotal: unnecessaryExpenses.discretionaryTotal,
+        topCategories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt, percentage: Math.round((amt/totalSpending)*100) })),
+        totalSpending,
+      },
+      summary: `Smart savings analysis: You can potentially save ${formatINR(unnecessaryExpenses.savingsPotential)}/month. ${savingsSuggestions.length} actionable suggestions identified.`
+    };
+  }
+  
+  // Total spending
   if (lowerIntent.includes('total') || lowerIntent.includes('overall') || lowerIntent.includes('all time')) {
     return {
       type: 'total',
@@ -349,7 +626,7 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
     };
   }
   
-  if (lowerIntent.includes('insight') || lowerIntent.includes('overspend') || lowerIntent.includes('advice') || lowerIntent.includes('suggest')) {
+  if (lowerIntent.includes('insight') || lowerIntent.includes('overspend')) {
     const topCategory = sortedCategories[0];
     const topCategoryPercentage = topCategory ? Math.round((topCategory[1] / totalSpending) * 100) : 0;
     const dailyAvg = Math.round(monthlyTotal / 30);
@@ -363,12 +640,14 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
         weeklyTotal: last7DaysTotal,
         categories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt, percentage: Math.round((amt/totalSpending)*100) })),
         transactionCount: transactions.length,
+        patterns: patterns,
+        savingsSuggestions: savingsSuggestions.slice(0, 3),
       },
       summary: `Spending insight: Your highest category is ${topCategory?.[0] || 'N/A'} at ${formatINR(topCategory?.[1] || 0)} (${topCategoryPercentage}% of total). Monthly: ${formatINR(monthlyTotal)}, Weekly: ${formatINR(last7DaysTotal)}, Daily avg: ${formatINR(dailyAvg)}.`
     };
   }
   
-  // Default: provide overview
+  // Default: provide comprehensive overview with patterns and suggestions
   return {
     type: 'overview',
     data: {
@@ -377,8 +656,15 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
       weeklyTotal: last7DaysTotal,
       transactionCount: transactions.length,
       topCategories: sortedCategories.slice(0, 5).map(([cat, amt]) => ({ category: cat, amount: amt, percentage: Math.round((amt/totalSpending)*100) })),
+      patterns: {
+        peakDay: patterns.peakSpendingDay,
+        trend: patterns.spendingTrend,
+        avgTransaction: patterns.averageTransactionSize,
+      },
+      savingsPotential: unnecessaryExpenses.savingsPotential,
+      quickTips: savingsSuggestions.slice(0, 2),
     },
-    summary: `Overview: Total spending ${formatINR(totalSpending)}, Monthly ${formatINR(monthlyTotal)}, Weekly ${formatINR(last7DaysTotal)}. Top categories: ${sortedCategories.slice(0, 3).map(([cat]) => cat).join(', ')}.`
+    summary: `Overview: Total spending ${formatINR(totalSpending)}, Monthly ${formatINR(monthlyTotal)}, Weekly ${formatINR(last7DaysTotal)}. Top categories: ${sortedCategories.slice(0, 3).map(([cat]) => cat).join(', ')}. Potential savings: ${formatINR(unnecessaryExpenses.savingsPotential)}/month.`
   };
 }
 
@@ -429,16 +715,19 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a personal finance AI assistant for Indian users. Your job is to explain expense data clearly and provide actionable insights.
+    const systemPrompt = `You are an expert personal finance AI assistant for Indian users. Your job is to explain expense data, identify spending patterns, detect unnecessary expenses, and provide smart, actionable savings suggestions.
 
 RULES:
 - Use ONLY the provided transaction summary data - never invent numbers
 - Always use Indian Rupee (₹) symbol for all currency values
-- Keep responses friendly, clear, and concise (2-4 sentences)
-- If the data shows high spending in a category, provide a helpful observation
-- Use Indian context (mention UPI, common Indian spending patterns if relevant)
-- Do not make assumptions about data you don't have
-- Be encouraging and helpful`;
+- Keep responses friendly, clear, and actionable (3-5 sentences)
+- Highlight specific opportunities to save money based on the data
+- For pattern analysis: explain when and where the user spends most
+- For unnecessary expenses: be direct but encouraging about what can be cut
+- For savings suggestions: give specific, practical tips with estimated savings
+- Use Indian context (UPI habits, food delivery apps, subscription services)
+- Be encouraging but honest - help users make better financial decisions
+- If savings suggestions are included in the data, incorporate them naturally`;
 
     const userPrompt = `User question: "${question}"
 
