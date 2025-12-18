@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfBase64, fileName } = await req.json();
+    const { pdfBase64, fileName, password } = await req.json();
 
     if (!pdfBase64) {
       return new Response(
@@ -21,11 +21,28 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing PDF:', fileName);
+    console.log('Processing PDF:', fileName, password ? '(with password)' : '(no password)');
 
     // Decode base64 PDF
     const pdfBytes = decode(pdfBase64);
     console.log('PDF size:', pdfBytes.length, 'bytes');
+
+    // Check if PDF is encrypted by looking for encryption markers
+    const pdfString = new TextDecoder('latin1').decode(pdfBytes.slice(0, Math.min(pdfBytes.length, 2000)));
+    const isEncrypted = pdfString.includes('/Encrypt') || pdfString.includes('Encrypt');
+    
+    console.log('PDF encryption check:', isEncrypted ? 'encrypted' : 'not encrypted');
+
+    // If encrypted and no password provided, ask for password
+    if (isEncrypted && !password) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'This PDF is password-protected. Please provide the password.' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Use Lovable AI with vision to extract transaction data from PDF
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -34,7 +51,9 @@ serve(async (req) => {
     }
 
     // Create a prompt for the AI to extract transactions
+    // Include password hint if provided - AI models can sometimes handle password-protected PDFs
     const extractionPrompt = `You are a bank statement parser. Extract ALL transactions from this bank statement PDF.
+${password ? `\nNote: This PDF may be password-protected. The password is: ${password}` : ''}
 
 For each transaction, extract:
 - date (in YYYY-MM-DD format)
@@ -43,7 +62,7 @@ For each transaction, extract:
 - category (auto-categorize based on the description)
 
 Categories to use:
-- Food & Dining (restaurants, food delivery, cafes)
+- Food & Dining (restaurants, food delivery, cafes, Swiggy, Zomato)
 - Shopping (Amazon, Flipkart, retail stores)
 - Transportation (Uber, Ola, petrol, metro)
 - Groceries (DMart, BigBazaar, supermarkets)
@@ -68,7 +87,7 @@ Important:
 
     console.log('Calling Lovable AI for PDF extraction...');
 
-    // Send PDF as base64 image to Gemini (it can process PDFs)
+    // Send PDF as base64 to Gemini (it can process PDFs)
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -109,12 +128,36 @@ Important:
       }
       const errorText = await aiResponse.text();
       console.error('AI gateway error:', aiResponse.status, errorText);
+      
+      // Check if error is related to encryption/password
+      if (errorText.toLowerCase().includes('password') || errorText.toLowerCase().includes('encrypt')) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Could not read this password-protected PDF. Please try unlocking it with an online tool first.' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error(`AI extraction failed: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
     const extractedText = aiData.choices?.[0]?.message?.content || '[]';
     console.log('AI response:', extractedText.substring(0, 500));
+
+    // Check if AI couldn't read due to password
+    const lowerResponse = extractedText.toLowerCase();
+    if (lowerResponse.includes('password') && (lowerResponse.includes('protected') || lowerResponse.includes('encrypted') || lowerResponse.includes('cannot'))) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'This PDF is password-protected. Please unlock it using an online tool like ilovepdf.com/unlock_pdf first, then upload the unlocked version.' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Parse the JSON from AI response
     let transactions = [];
@@ -156,7 +199,7 @@ Important:
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Could not extract transactions from this PDF. Please ensure it\'s a valid bank statement.',
+        error: 'Could not extract transactions from this PDF. Please ensure it\'s a valid bank statement. If password-protected, try unlocking it first at ilovepdf.com/unlock_pdf',
         csvData: '',
         transactionCount: 0,
       }),

@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
-import { Upload, FileText, Check, X, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Upload, FileText, Check, X, FileSpreadsheet, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
   onUpload: (csvData: string) => void;
@@ -12,6 +14,9 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingPDF, setPendingPDF] = useState<{ base64: string; name: string } | null>(null);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const handleCSVFile = useCallback((file: File) => {
@@ -24,24 +29,15 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
     reader.readAsText(file);
   }, [onUpload]);
 
-  const handlePDFFile = useCallback(async (file: File) => {
+  const processPDFWithPassword = useCallback(async (base64: string, pdfName: string, pdfPassword?: string) => {
     setIsProcessing(true);
-    setFileName(file.name);
     
     try {
-      // Convert PDF to base64
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      bytes.forEach(byte => binary += String.fromCharCode(byte));
-      const base64 = btoa(binary);
-
       toast({
         title: "Processing PDF...",
-        description: "Using AI to extract transactions. This may take a moment.",
+        description: pdfPassword ? "Unlocking and extracting transactions..." : "Using AI to extract transactions. This may take a moment.",
       });
 
-      // Call edge function to parse PDF
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-statement`,
         {
@@ -52,7 +48,8 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
           },
           body: JSON.stringify({ 
             pdfBase64: base64,
-            fileName: file.name 
+            fileName: pdfName,
+            password: pdfPassword
           }),
         }
       );
@@ -61,9 +58,20 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
 
       if (data.success && data.csvData) {
         onUpload(data.csvData);
+        setFileName(pdfName);
+        setPendingPDF(null);
+        setPassword("");
         toast({
           title: "✅ PDF parsed successfully",
           description: `Extracted ${data.transactionCount} transactions from your bank statement.`,
+        });
+      } else if (data.error?.includes("password") || data.error?.includes("encrypted")) {
+        // PDF is password protected, show password input
+        setPendingPDF({ base64, name: pdfName });
+        setFileName(pdfName);
+        toast({
+          title: "🔒 Password Required",
+          description: "This PDF is password-protected. Enter your password below.",
         });
       } else {
         throw new Error(data.error || "Failed to extract transactions from PDF");
@@ -76,10 +84,47 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
         variant: "destructive",
       });
       setFileName(null);
+      setPendingPDF(null);
     } finally {
       setIsProcessing(false);
     }
   }, [onUpload, toast]);
+
+  const handlePDFFile = useCallback(async (file: File) => {
+    setFileName(file.name);
+    
+    try {
+      // Convert PDF to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      bytes.forEach(byte => binary += String.fromCharCode(byte));
+      const base64 = btoa(binary);
+
+      // First try without password
+      await processPDFWithPassword(base64, file.name);
+    } catch (error) {
+      console.error("Error reading PDF:", error);
+      toast({
+        title: "Error reading file",
+        description: "Could not read the PDF file.",
+        variant: "destructive",
+      });
+      setFileName(null);
+    }
+  }, [processPDFWithPassword, toast]);
+
+  const handlePasswordSubmit = useCallback(async () => {
+    if (!pendingPDF || !password.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter the PDF password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await processPDFWithPassword(pendingPDF.base64, pendingPDF.name, password.trim());
+  }, [pendingPDF, password, processPDFWithPassword, toast]);
 
   const handleFile = useCallback((file: File) => {
     const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -128,7 +173,67 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
 
   const clearFile = useCallback(() => {
     setFileName(null);
+    setPendingPDF(null);
+    setPassword("");
   }, []);
+
+  // Show password input dialog
+  if (pendingPDF) {
+    return (
+      <div className="flex flex-col gap-3 p-4 bg-card rounded-xl border border-border shadow-lg animate-scale-in min-w-[280px]">
+        <div className="flex items-center gap-2 text-primary">
+          <Lock className="w-5 h-5" />
+          <span className="font-semibold text-sm">Password Protected PDF</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Enter password (usually FirstName + DOB like AMIT01011990)
+        </p>
+        <div className="relative">
+          <Input
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter PDF password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
+            className="pr-10"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={handlePasswordSubmit}
+            disabled={!password.trim() || isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Unlock & Process"
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={clearFile}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isProcessing) {
     return (
@@ -185,7 +290,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
         </div>
         <div>
           <p className="text-sm font-medium text-foreground">Upload Statement</p>
-          <p className="text-xs text-muted-foreground">PDF or CSV</p>
+          <p className="text-xs text-muted-foreground">PDF (password-protected OK) or CSV</p>
         </div>
       </div>
     </div>
