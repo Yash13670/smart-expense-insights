@@ -27,31 +27,189 @@ function formatINR(amount: number): string {
   }).format(amount);
 }
 
-// Parse CSV data into transactions
-function parseCSV(csvData: string): Transaction[] {
-  const lines = csvData.trim().split('\n');
-  const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+// Auto-categorize based on description/narration
+function categorizeTransaction(description: string): string {
+  const desc = description.toLowerCase();
   
+  // Food & Dining
+  if (desc.includes('swiggy') || desc.includes('zomato') || desc.includes('domino') || 
+      desc.includes('mcdonald') || desc.includes('kfc') || desc.includes('pizza') ||
+      desc.includes('cafe') || desc.includes('restaurant') || desc.includes('food') ||
+      desc.includes('starbucks') || desc.includes('eat') || desc.includes('barbeque')) {
+    return 'Food & Dining';
+  }
+  
+  // Shopping
+  if (desc.includes('amazon') || desc.includes('flipkart') || desc.includes('myntra') ||
+      desc.includes('ajio') || desc.includes('nykaa') || desc.includes('croma') ||
+      desc.includes('shop') || desc.includes('store') || desc.includes('mall') ||
+      desc.includes('mart') || desc.includes('retail')) {
+    return 'Shopping';
+  }
+  
+  // Transportation
+  if (desc.includes('uber') || desc.includes('ola') || desc.includes('rapido') ||
+      desc.includes('petrol') || desc.includes('diesel') || desc.includes('fuel') ||
+      desc.includes('ioc') || desc.includes('bpcl') || desc.includes('hp') ||
+      desc.includes('metro') || desc.includes('irctc') || desc.includes('railway')) {
+    return 'Transportation';
+  }
+  
+  // Groceries
+  if (desc.includes('dmart') || desc.includes('bigbazaar') || desc.includes('big bazaar') ||
+      desc.includes('reliance fresh') || desc.includes('more') || desc.includes('grocer') ||
+      desc.includes('supermarket') || desc.includes('vegetable') || desc.includes('kirana')) {
+    return 'Groceries';
+  }
+  
+  // Utilities
+  if (desc.includes('electricity') || desc.includes('water') || desc.includes('gas') ||
+      desc.includes('internet') || desc.includes('broadband') || desc.includes('mobile') ||
+      desc.includes('recharge') || desc.includes('bill') || desc.includes('jio') ||
+      desc.includes('airtel') || desc.includes('vi ')) {
+    return 'Utilities';
+  }
+  
+  // Entertainment
+  if (desc.includes('netflix') || desc.includes('spotify') || desc.includes('prime') ||
+      desc.includes('hotstar') || desc.includes('pvr') || desc.includes('inox') ||
+      desc.includes('cinema') || desc.includes('movie') || desc.includes('game') ||
+      desc.includes('play')) {
+    return 'Entertainment';
+  }
+  
+  // Health
+  if (desc.includes('pharmacy') || desc.includes('medical') || desc.includes('hospital') ||
+      desc.includes('doctor') || desc.includes('apollo') || desc.includes('medplus') ||
+      desc.includes('health') || desc.includes('gym') || desc.includes('fit')) {
+    return 'Health & Fitness';
+  }
+  
+  // UPI/Transfers
+  if (desc.includes('upi') || desc.includes('paytm') || desc.includes('phonepe') ||
+      desc.includes('gpay') || desc.includes('transfer') || desc.includes('neft') ||
+      desc.includes('imps') || desc.includes('rtgs')) {
+    return 'UPI/Transfers';
+  }
+  
+  return 'Other';
+}
+
+// Parse CSV values handling quoted fields with embedded commas/newlines
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim());
+  return values;
+}
+
+// Parse CSV data into transactions (supports multiple formats)
+function parseCSV(csvData: string): Transaction[] {
+  // Normalize line endings and handle multi-line quoted values
+  const normalizedData = csvData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Split by lines but preserve quoted content with newlines
+  const rawLines: string[] = [];
+  let currentLine = '';
+  let inQuotes = false;
+  
+  for (const char of normalizedData) {
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      currentLine += char;
+    } else if (char === '\n' && !inQuotes) {
+      if (currentLine.trim()) rawLines.push(currentLine);
+      currentLine = '';
+    } else {
+      currentLine += char;
+    }
+  }
+  if (currentLine.trim()) rawLines.push(currentLine);
+  
+  // Find header line (skip account info lines)
+  let headerLineIndex = 0;
+  for (let i = 0; i < rawLines.length; i++) {
+    const lower = rawLines[i].toLowerCase();
+    if (lower.includes('date') && (lower.includes('amount') || lower.includes('withdrawal') || lower.includes('debit') || lower.includes('narration'))) {
+      headerLineIndex = i;
+      break;
+    }
+  }
+  
+  const headers = parseCSVLine(rawLines[headerLineIndex]).map(h => h.toLowerCase().replace(/['"]/g, '').trim());
+  console.log('Detected headers:', headers);
+  
+  // Find column indices
   const dateIdx = headers.findIndex(h => h.includes('date'));
-  const descIdx = headers.findIndex(h => h.includes('description') || h.includes('merchant') || h.includes('name'));
+  const descIdx = headers.findIndex(h => h.includes('narration') || h.includes('description') || h.includes('merchant') || h.includes('particulars') || h.includes('remark'));
   const categoryIdx = headers.findIndex(h => h.includes('category'));
-  const amountIdx = headers.findIndex(h => h.includes('amount'));
+  
+  // Amount column - check for withdrawal/debit columns (bank statement format) or general amount
+  const withdrawalIdx = headers.findIndex(h => h.includes('withdrawal') || h.includes('debit') || h.includes('dr'));
+  const depositIdx = headers.findIndex(h => h.includes('deposit') || h.includes('credit') || h.includes('cr'));
+  const amountIdx = headers.findIndex(h => h === 'amount' || (h.includes('amount') && !h.includes('withdrawal') && !h.includes('deposit')));
+  
+  console.log('Column indices - date:', dateIdx, 'desc:', descIdx, 'withdrawal:', withdrawalIdx, 'deposit:', depositIdx, 'amount:', amountIdx);
   
   const transactions: Transaction[] = [];
   
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-    if (values.length >= Math.max(dateIdx, descIdx, categoryIdx, amountIdx) + 1) {
-      const amount = parseFloat(values[amountIdx]);
-      if (!isNaN(amount)) {
-        transactions.push({
-          date: values[dateIdx] || '',
-          description: values[descIdx] || '',
-          category: values[categoryIdx] || 'Other',
-          amount: Math.abs(amount),
-        });
-      }
+  for (let i = headerLineIndex + 1; i < rawLines.length; i++) {
+    const values = parseCSVLine(rawLines[i]).map(v => v.replace(/['"]/g, '').trim());
+    
+    if (values.length < 2) continue;
+    
+    // Get date
+    const dateStr = dateIdx >= 0 && values[dateIdx] ? values[dateIdx] : '';
+    if (!dateStr) continue;
+    
+    // Get description
+    const description = descIdx >= 0 && values[descIdx] ? values[descIdx].replace(/\n/g, ' ') : '';
+    
+    // Get amount - prefer withdrawal column for expenses, or use general amount
+    let amount = 0;
+    if (withdrawalIdx >= 0 && values[withdrawalIdx]) {
+      const parsed = parseFloat(values[withdrawalIdx].replace(/[^\d.-]/g, ''));
+      if (!isNaN(parsed) && parsed > 0) amount = parsed;
     }
+    if (amount === 0 && amountIdx >= 0 && values[amountIdx]) {
+      const parsed = parseFloat(values[amountIdx].replace(/[^\d.-]/g, ''));
+      if (!isNaN(parsed)) amount = Math.abs(parsed);
+    }
+    
+    if (amount === 0) continue;
+    
+    // Get or auto-detect category
+    let category = categoryIdx >= 0 && values[categoryIdx] ? values[categoryIdx] : '';
+    if (!category) {
+      category = categorizeTransaction(description);
+    }
+    
+    // Parse date - handle DD-MM-YYYY format
+    let parsedDate = dateStr;
+    const ddmmyyyy = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (ddmmyyyy) {
+      parsedDate = `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+    }
+    
+    transactions.push({
+      date: parsedDate,
+      description: description || 'Transaction',
+      category: category,
+      amount: amount,
+    });
   }
   
   return transactions;
