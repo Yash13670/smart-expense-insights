@@ -178,17 +178,41 @@ function parseCSV(csvData: string): Transaction[] {
     // Get description
     const description = descIdx >= 0 && values[descIdx] ? values[descIdx].replace(/\n/g, ' ') : '';
     
-    // Get amount - prefer withdrawal column for expenses, or use general amount
+    // Get amount - prefer withdrawal/debit column for expenses, or use general amount
     let amount = 0;
+
+    const parseMoney = (raw: string) => {
+      const cleaned = raw.replace(/[\s,]/g, '').replace(/[^\d.-]/g, '');
+      const parsed = parseFloat(cleaned);
+      return Number.isFinite(parsed) ? parsed : NaN;
+    };
+
+    // 1) Standard bank statements: WITHDRAWAL/DR is the expense column
     if (withdrawalIdx >= 0 && values[withdrawalIdx]) {
-      const parsed = parseFloat(values[withdrawalIdx].replace(/[^\d.-]/g, ''));
-      if (!isNaN(parsed) && parsed > 0) amount = parsed;
+      const parsed = parseMoney(values[withdrawalIdx]);
+      if (!isNaN(parsed) && Math.abs(parsed) > 0) amount = Math.abs(parsed);
     }
+
+    // 2) Some exports shift columns (e.g. empty CHQ.NO gets omitted). Heuristic:
+    // If withdrawal is blank but previous column looks like a small monetary value, treat it as withdrawal.
+    if (amount === 0 && withdrawalIdx > 0 && !values[withdrawalIdx]) {
+      const prevHeader = headers[withdrawalIdx - 1] || '';
+      const prevValueRaw = values[withdrawalIdx - 1] || '';
+      const prevParsed = parseMoney(prevValueRaw);
+      const looksLikeMoney = !isNaN(prevParsed) && Math.abs(prevParsed) > 0 && Math.abs(prevParsed) <= 200000 && /\d\.\d{1,2}$/.test(prevValueRaw);
+      const prevIsRefColumn = prevHeader.includes('chq') || prevHeader.includes('cheque') || prevHeader.includes('ref') || prevHeader.includes('no');
+
+      if (prevIsRefColumn && looksLikeMoney) {
+        amount = Math.abs(prevParsed);
+      }
+    }
+
+    // 3) Generic CSV: use amount column if present
     if (amount === 0 && amountIdx >= 0 && values[amountIdx]) {
-      const parsed = parseFloat(values[amountIdx].replace(/[^\d.-]/g, ''));
-      if (!isNaN(parsed)) amount = Math.abs(parsed);
+      const parsed = parseMoney(values[amountIdx]);
+      if (!isNaN(parsed) && Math.abs(parsed) > 0) amount = Math.abs(parsed);
     }
-    
+
     if (amount === 0) continue;
     
     // Get or auto-detect category
@@ -378,9 +402,20 @@ serve(async (req) => {
     console.log(`Parsed ${transactions.length} transactions`);
     
     if (transactions.length === 0) {
+      // Return a graceful empty response (some statements may only contain credits, or have an unsupported layout)
+      const emptyAnalysis: AnalysisResult = {
+        type: 'empty',
+        data: { transactionCount: 0 },
+        summary: 'No debit/expense transactions could be parsed from this CSV.'
+      };
+
       return new Response(
-        JSON.stringify({ error: 'No valid transactions found in CSV data' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          response:
+            'I couldn’t find any debit (withdrawal) transactions in this CSV, so there’s no spending to total up. Please upload a statement export that includes a WITHDRAWAL/DR (debit) column (or try a different export option).',
+          analysis: emptyAnalysis,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
