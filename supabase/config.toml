@@ -2,3 +2,6 @@ project_id = "eneejalxxtrsvukhrwzx"
 
 [functions.analyze-expenses]
 verify_jwt = false
+
+[functions.parse-pdf-statement]
+verify_jwt = false
