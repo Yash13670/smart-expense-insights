@@ -161,7 +161,7 @@ export function ExpenseChat() {
               Welcome! <span className="gradient-text">नमस्ते</span>
             </h3>
             <p className="text-sm text-muted-foreground mb-8 max-w-md leading-relaxed">
-              Upload your bank statement CSV or load sample data to get AI-powered insights about your spending in <strong className="text-foreground">Indian Rupees</strong>.
+              Upload your bank statement <strong className="text-foreground">PDF or CSV</strong> to get AI-powered insights about your spending in <strong className="text-foreground">Indian Rupees</strong>.
             </p>
             {csvData && (
               <div className="w-full max-w-lg animate-fade-in">
