@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
-import { Upload, FileText, Check, X, FileSpreadsheet, Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import { Upload, FileText, Check, X, FileSpreadsheet, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
   onUpload: (csvData: string) => void;
@@ -14,9 +12,6 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pendingPDF, setPendingPDF] = useState<{ base64: string; name: string } | null>(null);
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const handleCSVFile = useCallback((file: File) => {
@@ -29,13 +24,13 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
     reader.readAsText(file);
   }, [onUpload]);
 
-  const processPDFWithPassword = useCallback(async (base64: string, pdfName: string, pdfPassword?: string) => {
+  const processPDF = useCallback(async (base64: string, pdfName: string) => {
     setIsProcessing(true);
     
     try {
       toast({
         title: "Processing PDF...",
-        description: pdfPassword ? "Unlocking and extracting transactions..." : "Using AI to extract transactions. This may take a moment.",
+        description: "Using AI to extract transactions. This may take a moment.",
       });
 
       const response = await fetch(
@@ -48,8 +43,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
           },
           body: JSON.stringify({ 
             pdfBase64: base64,
-            fileName: pdfName,
-            password: pdfPassword
+            fileName: pdfName
           }),
         }
       );
@@ -59,20 +53,18 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
       if (data.success && data.csvData) {
         onUpload(data.csvData);
         setFileName(pdfName);
-        setPendingPDF(null);
-        setPassword("");
         toast({
           title: "✅ PDF parsed successfully",
           description: `Extracted ${data.transactionCount} transactions from your bank statement.`,
         });
-      } else if (data.error?.includes("password") || data.error?.includes("encrypted")) {
-        // PDF is password protected, show password input
-        setPendingPDF({ base64, name: pdfName });
-        setFileName(pdfName);
+      } else if (data.error?.includes("password") || data.error?.includes("unlock") || data.error?.includes("protected")) {
+        // PDF is password protected - guide user to unlock it externally
         toast({
-          title: "🔒 Password Required",
-          description: "This PDF is password-protected. Enter your password below.",
+          title: "🔒 Password-Protected PDF",
+          description: "Please unlock your PDF first at ilovepdf.com/unlock_pdf, then upload the unlocked version.",
+          variant: "destructive",
         });
+        setFileName(null);
       } else {
         throw new Error(data.error || "Failed to extract transactions from PDF");
       }
@@ -84,7 +76,6 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
         variant: "destructive",
       });
       setFileName(null);
-      setPendingPDF(null);
     } finally {
       setIsProcessing(false);
     }
@@ -101,8 +92,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
       bytes.forEach(byte => binary += String.fromCharCode(byte));
       const base64 = btoa(binary);
 
-      // First try without password
-      await processPDFWithPassword(base64, file.name);
+      await processPDF(base64, file.name);
     } catch (error) {
       console.error("Error reading PDF:", error);
       toast({
@@ -112,19 +102,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
       });
       setFileName(null);
     }
-  }, [processPDFWithPassword, toast]);
-
-  const handlePasswordSubmit = useCallback(async () => {
-    if (!pendingPDF || !password.trim()) {
-      toast({
-        title: "Password required",
-        description: "Please enter the PDF password.",
-        variant: "destructive",
-      });
-      return;
-    }
-    await processPDFWithPassword(pendingPDF.base64, pendingPDF.name, password.trim());
-  }, [pendingPDF, password, processPDFWithPassword, toast]);
+  }, [processPDF, toast]);
 
   const handleFile = useCallback((file: File) => {
     const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -173,79 +151,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
 
   const clearFile = useCallback(() => {
     setFileName(null);
-    setPendingPDF(null);
-    setPassword("");
   }, []);
-
-  // Show password input dialog
-  if (pendingPDF) {
-    return (
-      <div className="flex flex-col gap-4 p-5 bg-gradient-to-br from-card via-card to-primary/5 rounded-2xl border border-primary/30 shadow-xl animate-scale-in min-w-[300px] relative overflow-hidden">
-        {/* Decorative gradient orb */}
-        <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
-        <div className="absolute -bottom-10 -left-10 w-20 h-20 bg-accent/20 rounded-full blur-2xl" />
-        
-        <div className="flex items-center gap-3 relative">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-warning/20 to-warning/10 flex items-center justify-center animate-pulse">
-            <Lock className="w-5 h-5 text-warning" />
-          </div>
-          <div>
-            <span className="font-semibold text-sm text-foreground">Protected PDF</span>
-            <p className="text-xs text-muted-foreground">Enter your password to unlock</p>
-          </div>
-        </div>
-        
-        <div className="relative group">
-          <Input
-            type={showPassword ? "text" : "password"}
-            placeholder="FirstName + DOB (e.g., AMIT01011990)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
-            className="pr-10 bg-background/50 border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 rounded-xl"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors duration-300 hover:scale-110"
-          >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={handlePasswordSubmit}
-            disabled={!password.trim() || isProcessing}
-            className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Unlocking...
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                Unlock & Process
-              </>
-            )}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={clearFile}
-            disabled={isProcessing}
-            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all duration-300"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   if (isProcessing) {
     return (
