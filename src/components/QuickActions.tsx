@@ -18,15 +18,20 @@ export function QuickActions({ onSelect, disabled }: QuickActionsProps) {
           onClick={() => onSelect(question)}
           disabled={disabled}
           className={cn(
-            "text-xs bg-secondary/50 border-border/50 hover:bg-secondary hover:border-primary/50",
-            "transition-all duration-300 rounded-full px-4 py-2 h-auto",
-            "hover:shadow-glow hover:scale-105 active:scale-95",
+            "text-xs font-medium bg-gradient-to-r from-secondary/60 to-secondary/40 border-border/40",
+            "transition-all duration-300 rounded-full px-4 py-2.5 h-auto relative overflow-hidden group",
+            "hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10",
+            "hover:scale-105 hover:-translate-y-0.5 active:scale-95 active:translate-y-0",
             "animate-fade-in opacity-0",
             `stagger-${index + 1}`
           )}
-          style={{ animationDelay: `${index * 0.1}s`, animationFillMode: "forwards" }}
+          style={{ animationDelay: `${index * 0.08}s`, animationFillMode: "forwards" }}
         >
-          {question}
+          {/* Hover gradient overlay */}
+          <span className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Shimmer effect */}
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+          <span className="relative z-10 group-hover:text-primary transition-colors duration-300">{question}</span>
         </Button>
       ))}
     </div>

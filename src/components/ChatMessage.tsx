@@ -28,37 +28,41 @@ export function ChatMessage({ role, content, isLoading, analysis }: ChatMessageP
   return (
     <div
       className={cn(
-        "flex gap-4 animate-slide-up",
+        "flex gap-4 animate-slide-up group",
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
       <div
         className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-transform hover:scale-110",
+          "flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 relative overflow-hidden",
           isUser 
-            ? "bg-gradient-to-br from-primary to-primary/80 shadow-glow" 
-            : "bg-secondary border border-border/50"
+            ? "bg-gradient-to-br from-primary to-primary/70 shadow-glow" 
+            : "bg-gradient-to-br from-secondary to-secondary/80 border border-border/30 hover:border-primary/30"
         )}
       >
+        {/* Shimmer effect on hover */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
         {isUser ? (
-          <User className="w-5 h-5 text-primary-foreground" />
+          <User className="w-5 h-5 text-primary-foreground relative z-10" />
         ) : (
-          <Bot className="w-5 h-5 text-primary" />
+          <Bot className="w-5 h-5 text-primary relative z-10 group-hover:animate-pulse" />
         )}
       </div>
       <div className={cn("max-w-[85%] space-y-3", isUser && "text-right")}>
         <div
           className={cn(
-            "text-sm leading-relaxed",
+            "text-sm leading-relaxed transition-all duration-300 hover:shadow-lg",
             isUser ? "chat-bubble-user" : "chat-bubble-assistant"
           )}
         >
           {isLoading ? (
-            <div className="flex items-center gap-2 py-1">
-              <div className="pulse-dot" style={{ animationDelay: "0ms" }} />
-              <div className="pulse-dot" style={{ animationDelay: "200ms" }} />
-              <div className="pulse-dot" style={{ animationDelay: "400ms" }} />
-              <span className="text-xs text-muted-foreground ml-2">Analyzing...</span>
+            <div className="flex items-center gap-3 py-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-2 h-2 rounded-full bg-primary/80 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span className="text-xs text-muted-foreground animate-pulse">Analyzing your expenses...</span>
             </div>
           ) : (
             <p className="whitespace-pre-wrap">{content}</p>
@@ -67,7 +71,9 @@ export function ChatMessage({ role, content, isLoading, analysis }: ChatMessageP
         
         {/* Interactive Charts */}
         {!isUser && analysis && !isLoading && (
-          <SpendingChart analysis={analysis} />
+          <div className="animate-fade-in">
+            <SpendingChart analysis={analysis} />
+          </div>
         )}
       </div>
     </div>

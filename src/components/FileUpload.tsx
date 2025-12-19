@@ -180,46 +180,57 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
   // Show password input dialog
   if (pendingPDF) {
     return (
-      <div className="flex flex-col gap-3 p-4 bg-card rounded-xl border border-border shadow-lg animate-scale-in min-w-[280px]">
-        <div className="flex items-center gap-2 text-primary">
-          <Lock className="w-5 h-5" />
-          <span className="font-semibold text-sm">Password Protected PDF</span>
+      <div className="flex flex-col gap-4 p-5 bg-gradient-to-br from-card via-card to-primary/5 rounded-2xl border border-primary/30 shadow-xl animate-scale-in min-w-[300px] relative overflow-hidden">
+        {/* Decorative gradient orb */}
+        <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
+        <div className="absolute -bottom-10 -left-10 w-20 h-20 bg-accent/20 rounded-full blur-2xl" />
+        
+        <div className="flex items-center gap-3 relative">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-warning/20 to-warning/10 flex items-center justify-center animate-pulse">
+            <Lock className="w-5 h-5 text-warning" />
+          </div>
+          <div>
+            <span className="font-semibold text-sm text-foreground">Protected PDF</span>
+            <p className="text-xs text-muted-foreground">Enter your password to unlock</p>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Enter password (usually FirstName + DOB like AMIT01011990)
-        </p>
-        <div className="relative">
+        
+        <div className="relative group">
           <Input
             type={showPassword ? "text" : "password"}
-            placeholder="Enter PDF password"
+            placeholder="FirstName + DOB (e.g., AMIT01011990)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
-            className="pr-10"
+            className="pr-10 bg-background/50 border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 rounded-xl"
             autoFocus
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors duration-300 hover:scale-110"
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
+        
         <div className="flex gap-2">
           <Button
             size="sm"
             onClick={handlePasswordSubmit}
             disabled={!password.trim() || isProcessing}
-            className="flex-1"
+            className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
           >
             {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
+                Unlocking...
               </>
             ) : (
-              "Unlock & Process"
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                Unlock & Process
+              </>
             )}
           </Button>
           <Button
@@ -227,8 +238,9 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
             variant="outline"
             onClick={clearFile}
             disabled={isProcessing}
+            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all duration-300"
           >
-            Cancel
+            <X className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -237,24 +249,38 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
 
   if (isProcessing) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-xl border border-primary/30 animate-pulse">
-        <Loader2 className="w-4 h-4 text-primary animate-spin" />
-        <span className="text-sm text-foreground">Processing PDF...</span>
+      <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-xl border border-primary/40 shadow-glow animate-pulse relative overflow-hidden">
+        {/* Animated shimmer effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+        <div className="relative w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+        </div>
+        <div className="relative">
+          <span className="text-sm font-medium text-foreground">Processing PDF</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="w-1 h-1 rounded-full bg-primary animate-ping" />
+            Extracting transactions...
+          </span>
+        </div>
       </div>
     );
   }
 
   if (hasData && fileName) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-xl border border-primary/30 animate-scale-in">
-        <FileSpreadsheet className="w-4 h-4 text-primary" />
-        <span className="text-sm text-foreground truncate max-w-[120px]">{fileName}</span>
-        <Check className="w-4 h-4 text-primary" />
+      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-success/15 to-primary/15 rounded-xl border border-success/40 animate-scale-in group hover:shadow-glow hover:border-success/60 transition-all duration-300">
+        <div className="w-6 h-6 rounded-lg bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+          <FileSpreadsheet className="w-3.5 h-3.5 text-success" />
+        </div>
+        <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{fileName}</span>
+        <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center animate-pulse">
+          <Check className="w-3 h-3 text-success" />
+        </div>
         <button
           onClick={clearFile}
-          className="ml-auto p-1 hover:bg-secondary rounded-lg transition-colors"
+          className="ml-auto p-1.5 hover:bg-destructive/20 rounded-lg transition-all duration-300 hover:scale-110 group/close"
         >
-          <X className="w-3 h-3 text-muted-foreground" />
+          <X className="w-3.5 h-3.5 text-muted-foreground group-hover/close:text-destructive transition-colors" />
         </button>
       </div>
     );
@@ -266,31 +292,48 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       className={cn(
-        "relative border-2 border-dashed rounded-xl p-3 transition-all cursor-pointer group",
+        "relative border-2 border-dashed rounded-xl p-3 transition-all duration-300 cursor-pointer group overflow-hidden",
         isDragging
-          ? "border-primary bg-primary/10 scale-105"
-          : "border-border hover:border-primary/50 hover:bg-secondary/30"
+          ? "border-primary bg-primary/15 scale-[1.02] shadow-glow"
+          : "border-border/60 hover:border-primary/60 hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 hover:shadow-lg"
       )}
     >
+      {/* Animated background gradient */}
+      <div className={cn(
+        "absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 opacity-0 transition-opacity duration-500",
+        isDragging && "opacity-100 animate-pulse"
+      )} />
+      
       <input
         type="file"
         accept=".csv,.pdf"
         onChange={handleInputChange}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 relative">
         <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-          isDragging ? "bg-primary text-primary-foreground" : "bg-secondary group-hover:bg-primary/20"
+          "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 relative overflow-hidden",
+          isDragging 
+            ? "bg-primary text-primary-foreground shadow-glow scale-110" 
+            : "bg-secondary/80 group-hover:bg-primary/20 group-hover:scale-105"
         )}>
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
           <Upload className={cn(
-            "w-5 h-5 transition-colors",
-            isDragging ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
+            "w-5 h-5 transition-all duration-300 relative z-10",
+            isDragging 
+              ? "text-primary-foreground animate-bounce" 
+              : "text-muted-foreground group-hover:text-primary group-hover:-translate-y-0.5"
           )} />
         </div>
-        <div>
-          <p className="text-sm font-medium text-foreground">Upload Statement</p>
-          <p className="text-xs text-muted-foreground">PDF (password-protected OK) or CSV</p>
+        <div className="transition-all duration-300 group-hover:translate-x-0.5">
+          <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
+            Upload Statement
+          </p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <FileText className="w-3 h-3" />
+            <span>PDF or CSV</span>
+          </p>
         </div>
       </div>
     </div>
