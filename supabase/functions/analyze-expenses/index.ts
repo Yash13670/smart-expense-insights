@@ -668,6 +668,33 @@ function analyzeExpenses(transactions: Transaction[], intent: string): AnalysisR
   };
 }
 
+// Input validation constants
+const MAX_CSV_SIZE = 5 * 1024 * 1024; // 5MB max
+const MAX_ROW_COUNT = 10000;
+const MAX_QUESTION_LENGTH = 500;
+
+// Sanitize CSV content to prevent formula injection and clean data
+function sanitizeCSVContent(csvData: string): string {
+  // Remove potential formula injection prefixes from cell values
+  const dangerousPrefixes = ['=', '+', '-', '@', '\t', '\r'];
+  const lines = csvData.split('\n');
+  
+  return lines.map(line => {
+    // Parse the line and sanitize each cell
+    const cells = parseCSVLine(line);
+    return cells.map(cell => {
+      let sanitized = cell.trim();
+      // Strip dangerous formula prefixes
+      while (dangerousPrefixes.some(prefix => sanitized.startsWith(prefix))) {
+        sanitized = sanitized.slice(1).trim();
+      }
+      // Remove any control characters
+      sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
+      return sanitized;
+    }).join(',');
+  }).join('\n');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -675,16 +702,53 @@ serve(async (req) => {
 
   try {
     const { csvData, question } = await req.json();
-    
-    if (!csvData || !question) {
+
+    // Input validation: Check CSV size
+    if (!csvData || typeof csvData !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Missing csvData or question' }),
+        JSON.stringify({ error: 'CSV data is required and must be a string' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    if (csvData.length > MAX_CSV_SIZE) {
+      return new Response(
+        JSON.stringify({ error: `CSV file too large. Maximum size is ${MAX_CSV_SIZE / 1024 / 1024}MB` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Input validation: Check row count
+    const lineCount = csvData.split('\n').filter(line => line.trim()).length;
+    if (lineCount > MAX_ROW_COUNT) {
+      return new Response(
+        JSON.stringify({ error: `CSV has too many rows (${lineCount}). Maximum is ${MAX_ROW_COUNT} rows` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Input validation: Check question
+    if (!question || typeof question !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Question is required and must be a string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Question too long. Maximum is ${MAX_QUESTION_LENGTH} characters` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Sanitize the CSV content
+    const sanitizedCSV = sanitizeCSVContent(csvData);
+    // Sanitize question for AI prompt (remove potential injection attempts)
+    const sanitizedQuestion = question.replace(/[\x00-\x1F\x7F]/g, '').trim();
+    
     console.log('Parsing CSV data...');
-    const transactions = parseCSV(csvData);
+    const transactions = parseCSV(sanitizedCSV);
     console.log(`Parsed ${transactions.length} transactions`);
     
     if (transactions.length === 0) {
@@ -705,8 +769,8 @@ serve(async (req) => {
       );
     }
 
-    console.log('Analyzing expenses for question:', question);
-    const analysis = analyzeExpenses(transactions, question);
+    console.log('Analyzing expenses for question:', sanitizedQuestion);
+    const analysis = analyzeExpenses(transactions, sanitizedQuestion);
     console.log('Analysis result:', analysis);
 
     // Get AI explanation
@@ -729,7 +793,7 @@ RULES:
 - Be encouraging but honest - help users make better financial decisions
 - If savings suggestions are included in the data, incorporate them naturally`;
 
-    const userPrompt = `User question: "${question}"
+    const userPrompt = `User question: "${sanitizedQuestion}"
 
 Transaction analysis summary:
 ${analysis.summary}

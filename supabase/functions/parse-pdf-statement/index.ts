@@ -6,13 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_PDF_SIZE = 20 * 1024 * 1024; // 20MB max
+const MAX_FILENAME_LENGTH = 255;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { pdfBase64, fileName, password } = await req.json();
+    const { pdfBase64, fileName } = await req.json();
+    // Note: password parameter removed for security - users should unlock PDFs locally
 
     if (!pdfBase64) {
       return new Response(
@@ -21,11 +26,32 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing PDF:', fileName, password ? '(with password)' : '(no password)');
+    // Validate base64 string format
+    if (typeof pdfBase64 !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(pdfBase64)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid PDF data format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate filename
+    const sanitizedFileName = typeof fileName === 'string' 
+      ? fileName.slice(0, MAX_FILENAME_LENGTH).replace(/[^\w\s.-]/g, '_')
+      : 'statement.pdf';
+
+    console.log('Processing PDF:', sanitizedFileName);
 
     // Decode base64 PDF
     const pdfBytes = decode(pdfBase64);
     console.log('PDF size:', pdfBytes.length, 'bytes');
+
+    // Validate PDF size
+    if (pdfBytes.length > MAX_PDF_SIZE) {
+      return new Response(
+        JSON.stringify({ success: false, error: `PDF too large. Maximum size is ${MAX_PDF_SIZE / 1024 / 1024}MB` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Check if PDF is encrypted by looking for encryption markers
     const pdfString = new TextDecoder('latin1').decode(pdfBytes.slice(0, Math.min(pdfBytes.length, 2000)));
@@ -33,12 +59,12 @@ serve(async (req) => {
     
     console.log('PDF encryption check:', isEncrypted ? 'encrypted' : 'not encrypted');
 
-    // If encrypted and no password provided, ask for password
-    if (isEncrypted && !password) {
+    // If encrypted, ask user to unlock it locally first (don't handle passwords server-side)
+    if (isEncrypted) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'This PDF is password-protected. Please provide the password.' 
+          error: 'This PDF is password-protected. Please unlock it first using a tool like ilovepdf.com/unlock_pdf, then upload the unlocked version.' 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -50,10 +76,8 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Create a prompt for the AI to extract transactions
-    // Include password hint if provided - AI models can sometimes handle password-protected PDFs
+    // Create a prompt for the AI to extract transactions (no password in prompt for security)
     const extractionPrompt = `You are a bank statement parser. Extract ALL transactions from this bank statement PDF.
-${password ? `\nNote: This PDF may be password-protected. The password is: ${password}` : ''}
 
 For each transaction, extract:
 - date (in YYYY-MM-DD format)
