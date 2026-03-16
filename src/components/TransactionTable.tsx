@@ -102,13 +102,13 @@ export function TransactionTable({ csvData, isOpen, onToggle }: TransactionTable
     <div className="border border-border/50 rounded-xl overflow-hidden bg-card/30 backdrop-blur-sm">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+        className="w-full flex items-center justify-between gap-3 p-3 sm:p-4 hover:bg-muted/30 transition-colors"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="text-xs sm:text-sm font-medium text-foreground truncate">
             Transaction History
           </span>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-[10px] sm:text-xs whitespace-nowrap">
             {transactions.length} transactions
           </Badge>
         </div>
@@ -121,7 +121,7 @@ export function TransactionTable({ csvData, isOpen, onToggle }: TransactionTable
 
       {isOpen && (
         <div className="border-t border-border/50">
-          <div className="p-4 border-b border-border/30">
+          <div className="p-3 sm:p-4 border-b border-border/30">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -143,8 +143,8 @@ export function TransactionTable({ csvData, isOpen, onToggle }: TransactionTable
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-auto">
-            <Table>
+          <div className="max-h-[380px] sm:max-h-[400px] overflow-auto">
+            <Table className="min-w-[640px]">
               <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm">
                 <TableRow className="hover:bg-transparent border-border/30">
                   <TableHead className="text-muted-foreground font-medium">Date</TableHead>
@@ -179,12 +179,12 @@ export function TransactionTable({ csvData, isOpen, onToggle }: TransactionTable
             </Table>
           </div>
 
-          <div className="p-4 border-t border-border/30 bg-muted/20">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">
+          <div className="p-3 sm:p-4 border-t border-border/30 bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">
                 {searchTerm ? `${filteredTransactions.length} of ${transactions.length}` : `${transactions.length}`} transactions
               </span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-xs sm:text-sm font-semibold text-foreground">
                 Total: ₹{totalAmount.toLocaleString('en-IN')}
               </span>
             </div>

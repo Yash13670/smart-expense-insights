@@ -108,34 +108,36 @@ export function ExpenseChat() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-glow animate-glow-pulse">
-              <IndianRupee className="w-6 h-6 text-primary-foreground" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-glow animate-glow-pulse">
+              <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-success flex items-center justify-center">
               <Zap className="w-2.5 h-2.5 text-success-foreground" />
             </div>
           </div>
-          <div>
-            <h2 className="font-display font-bold text-lg text-foreground">AI Expense Assistant</h2>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <div className="min-w-0">
+            <h2 className="font-display font-bold text-base sm:text-lg text-foreground truncate">AI Expense Assistant</h2>
+            <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
               Powered by AI • Indian Rupees
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <FileUpload onUpload={setCsvData} hasData={!!csvData} />
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-none">
+            <FileUpload onUpload={setCsvData} hasData={!!csvData} />
+          </div>
           {!csvData && (
             <Button
               variant="outline"
               size="sm"
               onClick={loadSampleData}
-              className="gap-2 rounded-xl border-border/50 hover:border-primary/50 hover:bg-secondary transition-all interactive-btn"
+              className="gap-2 rounded-xl border-border/50 hover:border-primary/50 hover:bg-secondary transition-all interactive-btn shrink-0"
             >
               <Database className="w-4 h-4" />
               <span className="hidden sm:inline">Load Sample</span>
@@ -145,7 +147,7 @@ export function ExpenseChat() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-6">
         {/* Transaction Table - shown when data is loaded */}
         {csvData && (
           <TransactionTable 
@@ -156,7 +158,7 @@ export function ExpenseChat() {
         )}
 
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+          <div className="flex flex-col items-center justify-center h-full text-center px-2 sm:px-4">
             <div className="relative mb-6">
               <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center animate-float">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-glow">
@@ -167,10 +169,10 @@ export function ExpenseChat() {
                 <span className="text-xs">🇮🇳</span>
               </div>
             </div>
-            <h3 className="font-display text-2xl font-bold text-foreground mb-3">
+            <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-3">
               Welcome! <span className="gradient-text">नमस्ते</span>
             </h3>
-            <p className="text-sm text-muted-foreground mb-8 max-w-md leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-6 sm:mb-8 max-w-md leading-relaxed">
               Upload your bank statement <strong className="text-foreground">PDF or CSV</strong> to get AI-powered insights about your spending in <strong className="text-foreground">Indian Rupees</strong>.
             </p>
             {csvData && (
@@ -180,10 +182,10 @@ export function ExpenseChat() {
               </div>
             )}
             {!csvData && (
-              <div className="flex gap-3 animate-fade-in">
+              <div className="flex w-full sm:w-auto animate-fade-in">
                 <Button 
                   onClick={loadSampleData}
-                  className="gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-glow interactive-btn"
+                  className="gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-glow interactive-btn w-full sm:w-auto"
                 >
                   <Database className="w-4 h-4" />
                   Load Sample Data
@@ -211,13 +213,13 @@ export function ExpenseChat() {
 
       {/* Quick Actions */}
       {messages.length > 0 && csvData && !isLoading && (
-        <div className="px-5 py-3 border-t border-border/50 bg-card/30 backdrop-blur-sm">
+        <div className="px-3 sm:px-5 py-3 border-t border-border/50 bg-card/30 backdrop-blur-sm">
           <QuickActions onSelect={analyzeExpenses} disabled={isLoading} />
         </div>
       )}
 
       {/* Input */}
-      <div className="p-5 border-t border-border/50 bg-card/50 backdrop-blur-sm">
+      <div className="p-3 sm:p-5 border-t border-border/50 bg-card/50 backdrop-blur-sm">
         <ChatInput
           onSend={analyzeExpenses}
           disabled={isLoading || !csvData}

@@ -174,11 +174,11 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
 
   if (hasData && fileName) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-success/15 to-primary/15 rounded-xl border border-success/40 animate-scale-in group hover:shadow-glow hover:border-success/60 transition-all duration-300">
+      <div className="flex items-center gap-2 px-2 sm:px-3 py-2 bg-gradient-to-r from-success/15 to-primary/15 rounded-xl border border-success/40 animate-scale-in group hover:shadow-glow hover:border-success/60 transition-all duration-300 min-w-0">
         <div className="w-6 h-6 rounded-lg bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
           <FileSpreadsheet className="w-3.5 h-3.5 text-success" />
         </div>
-        <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{fileName}</span>
+        <span className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[110px] sm:max-w-[140px]">{fileName}</span>
         <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center animate-pulse">
           <Check className="w-3 h-3 text-success" />
         </div>
@@ -198,7 +198,7 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       className={cn(
-        "relative border-2 border-dashed rounded-xl p-3 transition-all duration-300 cursor-pointer group overflow-hidden",
+        "relative border-2 border-dashed rounded-xl p-2 sm:p-3 transition-all duration-300 cursor-pointer group overflow-hidden",
         isDragging
           ? "border-primary bg-primary/15 scale-[1.02] shadow-glow"
           : "border-border/60 hover:border-primary/60 hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 hover:shadow-lg"
@@ -216,9 +216,9 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
         onChange={handleInputChange}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
       />
-      <div className="flex items-center gap-3 relative">
+      <div className="flex items-center gap-2 sm:gap-3 relative">
         <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 relative overflow-hidden",
+          "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-300 relative overflow-hidden",
           isDragging 
             ? "bg-primary text-primary-foreground shadow-glow scale-110" 
             : "bg-secondary/80 group-hover:bg-primary/20 group-hover:scale-105"
@@ -226,17 +226,17 @@ export function FileUpload({ onUpload, hasData }: FileUploadProps) {
           {/* Shimmer effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
           <Upload className={cn(
-            "w-5 h-5 transition-all duration-300 relative z-10",
+            "w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 relative z-10",
             isDragging 
               ? "text-primary-foreground animate-bounce" 
               : "text-muted-foreground group-hover:text-primary group-hover:-translate-y-0.5"
           )} />
         </div>
-        <div className="transition-all duration-300 group-hover:translate-x-0.5">
-          <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
+        <div className="transition-all duration-300 group-hover:translate-x-0.5 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
             Upload Statement
           </p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <p className="text-[10px] sm:text-xs text-muted-foreground items-center gap-1.5 hidden sm:flex">
             <FileText className="w-3 h-3" />
             <span>PDF or CSV</span>
           </p>

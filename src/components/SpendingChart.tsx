@@ -163,18 +163,18 @@ export function SpendingChart({ analysis }: SpendingChartProps) {
           <h4 className="font-display font-semibold text-sm">Spending Insights</h4>
         </div>
         
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="text-center p-3 rounded-xl bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Monthly</p>
-            <p className="text-lg font-bold gradient-text">{formatINR(data.monthlyTotal as number)}</p>
+            <p className="text-base sm:text-lg font-bold gradient-text">{formatINR(data.monthlyTotal as number)}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Weekly</p>
-            <p className="text-lg font-bold text-foreground">{formatINR(data.weeklyTotal as number)}</p>
+            <p className="text-base sm:text-lg font-bold text-foreground">{formatINR(data.weeklyTotal as number)}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Daily Avg</p>
-            <p className="text-lg font-bold text-foreground">{formatINR(data.dailyAvg as number)}</p>
+            <p className="text-base sm:text-lg font-bold text-foreground">{formatINR(data.dailyAvg as number)}</p>
           </div>
         </div>
 
@@ -209,7 +209,7 @@ export function SpendingChart({ analysis }: SpendingChartProps) {
     
     return (
       <div className="glass-card p-4 animate-scale-in mt-2">
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
             <p className="text-xs text-muted-foreground mb-1">Total Spent</p>
             <p className="text-xl font-bold gradient-text">{formatINR(data.totalSpending as number)}</p>

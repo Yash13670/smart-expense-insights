@@ -28,13 +28,13 @@ export function ChatMessage({ role, content, isLoading, analysis }: ChatMessageP
   return (
     <div
       className={cn(
-        "flex gap-4 animate-slide-up group",
+        "flex gap-2 sm:gap-4 animate-slide-up group",
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
       <div
         className={cn(
-          "flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 relative overflow-hidden",
+          "flex-shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 relative overflow-hidden",
           isUser 
             ? "bg-gradient-to-br from-primary to-primary/70 shadow-glow" 
             : "bg-gradient-to-br from-secondary to-secondary/80 border border-border/30 hover:border-primary/30"
@@ -43,12 +43,12 @@ export function ChatMessage({ role, content, isLoading, analysis }: ChatMessageP
         {/* Shimmer effect on hover */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
         {isUser ? (
-          <User className="w-5 h-5 text-primary-foreground relative z-10" />
+          <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground relative z-10" />
         ) : (
-          <Bot className="w-5 h-5 text-primary relative z-10 group-hover:animate-pulse" />
+          <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-primary relative z-10 group-hover:animate-pulse" />
         )}
       </div>
-      <div className={cn("max-w-[85%] space-y-3", isUser && "text-right")}>
+      <div className={cn("max-w-[92%] sm:max-w-[85%] space-y-3", isUser && "text-right")}>
         <div
           className={cn(
             "text-sm leading-relaxed transition-all duration-300 hover:shadow-lg",
